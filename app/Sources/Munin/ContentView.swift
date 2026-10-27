@@ -14,10 +14,12 @@ struct ContentView: View {
             detail
         }
         .task {
-            // `Munin --open <path>`: start with a world or build already loaded.
+            // `Munin --open <path>`: start with that; otherwise with what was open last time.
             let args = CommandLine.arguments
-            if let i = args.firstIndex(of: "--open"), args.count > i + 1, model.scene == nil {
+            if let i = args.firstIndex(of: "--open"), args.count > i + 1 {
                 model.open(URL(fileURLWithPath: args[i + 1]))
+            } else {
+                model.openLastWorld()
             }
         }
         .onDrop(of: [.fileURL], isTargeted: $dropTargeted) { providers in
@@ -30,87 +32,7 @@ struct ContentView: View {
 
     // MARK: - sidebar
 
-    private var sidebar: some View {
-        List(selection: Binding(get: { model.selected }, set: { model.select($0) })) {
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 10) {
-                        Image(nsImage: NSApp.applicationIconImage)
-                            .resizable().frame(width: 40, height: 40)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Munin").font(.title2.weight(.semibold))
-                            Text("How your Valheim builds were put together")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.bottom, 4)
-                    // With nothing open, the welcome screen offers the same.
-                    if model.scene != nil || model.map != nil || model.loading || model.statusIsError {
-                        HStack {
-                            Button("Open…") { model.chooseFile() }
-                                .keyboardShortcut("o")
-                            Button("Example tower") {
-                                if let url = Bundle.module.url(forResource: "watchtower", withExtension: "json") { model.open(url) }
-                            }
-                        }
-                        if model.loading { ProgressView().controlSize(.small) }
-                        Text(model.status)
-                            .font(.caption)
-                            .foregroundStyle(model.statusIsError ? .red : .secondary)
-                            .textSelection(.enabled)
-                    }
-                    if let warning = model.catalogError {
-                        Text(warning).font(.caption).foregroundStyle(.orange)
-                    }
-                }
-                .padding(.vertical, 4)
-            }
-
-            if model.builds.count > 1 {
-                Section("Builds in this world") {
-                    Toggle("Hide builds under 10 pieces", isOn: $model.hideSmall)
-                        .font(.caption)
-                    ForEach(model.visibleBuilds) { build in
-                        HStack {
-                            Text(build.name)
-                            Spacer()
-                            Text("\(Int(build.size.x))×\(Int(build.size.z))×\(Int(build.size.y)) m")
-                                .foregroundStyle(.secondary).monospacedDigit()
-                        }
-                        .tag(build.id)
-                    }
-                }
-            }
-
-            if let scene = model.scene {
-                Section {
-                    ForEach(scene.build.counts, id: \.label) { row in
-                        HStack {
-                            Text(row.label)
-                                .foregroundStyle(row.label.hasPrefix("#") ? .pink : .primary)
-                            Spacer()
-                            Text("\(row.count)").foregroundStyle(.secondary).monospacedDigit()
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture { model.focus = model.focus == row.label ? nil : row.label }
-                        .listRowBackground(model.focus == row.label ? Theme.ember.opacity(0.25) : nil)
-                    }
-                } header: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(scene.build.name)
-                        Text(String(format: "%d pieces · %.1f × %.1f m, %.1f m tall — click a row to highlight",
-                                    scene.build.pieces.count, scene.build.size.x, scene.build.size.z, scene.build.size.y))
-                            .textCase(nil).font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-        .toolbar {
-            if model.scene != nil {
-                Button("Save build…", systemImage: "square.and.arrow.down") { model.exportSelected() }
-            }
-        }
-    }
+    private var sidebar: some View { Sidebar() }
 
     // MARK: - map and 3D
 
@@ -122,21 +44,11 @@ struct ContentView: View {
                         onPickBuild: { model.select($0.id) })
             } else if let scene = model.scene {
                 sceneView(scene)
+            } else if !model.loading {
+                WelcomeView()
             } else {
-                ContentUnavailableView {
-                    Label {
-                        Text("Open a world")
-                    } icon: {
-                        Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 96, height: 96)
-                    }
-                } description: {
-                    Text("Open your world save (⌘O), drop it here, or try the example tower.")
-                } actions: {
-                    Button("Open…") { model.chooseFile() }.buttonStyle(.borderedProminent)
-                    Button("Example tower") {
-                        if let url = Bundle.module.url(forResource: "watchtower", withExtension: "json") { model.open(url) }
-                    }
-                }
+                // Something to hang the spinner on while the first area opens.
+                Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .overlay { if dropTargeted { dropHint } }
@@ -147,37 +59,29 @@ struct ContentView: View {
                     ForEach(AppModel.Mode.allCases, id: \.self) { Text($0.rawValue) }
                 }
                 .pickerStyle(.segmented)
+                .help("The whole world as a map, or the open area in 3D")
             }
         }
     }
 
     private func sceneView(_ scene: BuildScene) -> some View {
         ZStack(alignment: .topLeading) {
-            BuildView(scene: scene) { target, point in model.hover(target, at: point) }
+            BuildView(scene: scene, fullResolution: model.fullResolution) { target, point in model.hover(target, at: point) }
                 .id(ObjectIdentifier(scene))
 
-            HStack(spacing: 6) {
-                ForEach(ViewPreset.allCases) { preset in
-                    Button(preset.rawValue) { scene.frame(preset) }
-                }
-                Toggle("Ghost above cut", isOn: $model.ghosts).toggleStyle(.button)
-                if scene.region != nil {
-                    Toggle("Surroundings", isOn: $model.surroundings).toggleStyle(.button)
-                }
-                Divider().frame(height: 18)
-                Image(systemName: model.hour >= 6 && model.hour < 18 ? "sun.max" : "moon.stars")
-                    .help("Time of day")
-                Slider(value: $model.hour, in: 0...24).frame(width: 140)
-                Text(String(format: "%02d:%02d", Int(model.hour) % 24, Int((model.hour - model.hour.rounded(.down)) * 60)))
-                    .monospacedDigit().font(.caption)
-                Spacer()
-                Text("Drag to move · right-drag to rotate · scroll to zoom · double-click to focus · WASD")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(.regularMaterial, in: Capsule())
+            SceneControls(scene: scene).padding(10)
+
+            if FrameCounter.enabled {
+                FrameRateBadge()
+                    .padding(12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .allowsHitTesting(false)
             }
-            .padding(10)
+
+            CameraControls(camera: scene.cameraState, scene: scene)
+                .padding(.trailing, 12)
+                .padding(.bottom, scene.build.pieces.isEmpty ? 12 : 78)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
 
             if let hovered = model.hovered {
                 tooltip(hovered.piece, isProp: hovered.isProp)
@@ -193,7 +97,7 @@ struct ContentView: View {
                         .padding(.horizontal, 10).padding(.vertical, 4)
                         .background(.regularMaterial, in: Capsule())
                 }
-                layerBar(scene)
+                if !scene.build.pieces.isEmpty { layerBar(scene) }
             }
         }
     }
@@ -202,16 +106,18 @@ struct ContentView: View {
         HStack {
             Button { model.level = max(0, model.level - 1) } label: { Image(systemName: "chevron.left") }
                 .keyboardShortcut("[", modifiers: [])
+                .help("One layer down ( [ )")
             Slider(value: Binding(get: { Double(model.level) }, set: { model.level = Int($0.rounded()) }),
                    in: 0...Double(max(scene.levels.count - 1, 1)), step: 1)
             Button { model.level = min(scene.levels.count - 1, model.level + 1) } label: { Image(systemName: "chevron.right") }
                 .keyboardShortcut("]", modifiers: [])
+                .help("One layer up ( ] )")
             Text(model.layerLabel).monospacedDigit().frame(minWidth: 230, alignment: .leading)
         }
         .padding(10)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
         .padding(10)
-        .disabled(scene.levels.count < 2 || scene.build.pieces.isEmpty)
+        .disabled(scene.levels.count < 2)
     }
 
     private func tooltip(_ piece: Piece, isProp: Bool) -> some View {

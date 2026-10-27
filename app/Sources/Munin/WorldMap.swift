@@ -77,7 +77,8 @@ struct WorldMap {
     }
 }
 
-/// Pan with a drag, zoom with a pinch or the buttons, click to open that area in 3D.
+/// Google Maps-style: drag to pan; scroll, pinch or double-click to zoom toward the
+/// cursor; click to open that area in 3D.
 struct MapView: View {
     let map: WorldMap
     let builds: [Build]
@@ -90,6 +91,10 @@ struct MapView: View {
     @State private var offset: CGSize = .zero
     @State private var drag: CGSize = .zero
     @State private var hover: CGPoint?
+    @State private var size: CGSize = .zero
+    @State private var scrollMonitor: Any?
+
+    private static let zoomRange: ClosedRange<CGFloat> = 0.5...60
 
     var body: some View {
         GeometryReader { geo in
@@ -150,28 +155,86 @@ struct MapView: View {
             .simultaneousGesture(MagnifyGesture()
                 .onChanged { pinch = $0.magnification }
                 .onEnded { zoom = min(max(zoom * $0.magnification, 0.5), 60); pinch = 1 })
+            // The double-click first, so a single click waits to see which it is.
+            .onTapGesture(count: 2, coordinateSpace: .local) { location in
+                zoom(by: 2, keeping: location)
+            }
             .onTapGesture(coordinateSpace: .local) { location in
                 onPick(map.worldPoint(pixel: toPixel(location)))
             }
             .overlay(alignment: .bottomLeading) { controls }
+            .overlay(alignment: .bottomTrailing) { zoomButtons }
             .clipped()
+            .onAppear { size = geo.size }
+            .onChange(of: geo.size) { size = $1 }
         }
+        .onAppear {
+            // SwiftUI has no scroll-wheel gesture; watch the events while the cursor is on the map.
+            scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+                guard let at = hover else { return event }
+                let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY * 0.005 : event.scrollingDeltaY * 0.12
+                zoom(by: exp(delta), keeping: at)
+                return nil
+            }
+        }
+        .onDisappear {
+            if let scrollMonitor { NSEvent.removeMonitor(scrollMonitor) }
+            scrollMonitor = nil
+        }
+    }
+
+    /// Zoom by `factor`, keeping the map point under `point` (view coordinates) where it is.
+    private func zoom(by factor: CGFloat, keeping point: CGPoint) {
+        let new = min(max(zoom * factor, Self.zoomRange.lowerBound), Self.zoomRange.upperBound)
+        let applied = new / zoom
+        let center = CGPoint(x: size.width / 2 + offset.width, y: size.height / 2 + offset.height)
+        offset.width = point.x - (point.x - center.x) * applied - size.width / 2
+        offset.height = point.y - (point.y - center.y) * applied - size.height / 2
+        zoom = new
     }
 
     private var controls: some View {
         HStack(spacing: 10) {
-            Button { zoom = min(zoom * 1.5, 60) } label: { Image(systemName: "plus.magnifyingglass") }
-            Button { zoom = max(zoom / 1.5, 0.5) } label: { Image(systemName: "minus.magnifyingglass") }
-            Button("Fit") { zoom = 1; offset = .zero }
-            Divider().frame(height: 16)
             Text("Area radius")
             Slider(value: $radius, in: 20...200, step: 5).frame(width: 160)
             Text("\(Int(radius)) m").monospacedDigit().frame(width: 50, alignment: .leading)
             Text("Click the map to open that area in 3D").foregroundStyle(.secondary)
         }
         .font(.callout)
+        .padding(.horizontal, 12).padding(.vertical, 6)
+        .background(.regularMaterial, in: Capsule())
+        .fixedSize()
         .padding(10)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
-        .padding(10)
+    }
+
+    /// Bottom right, as on Google Maps: zoom in, zoom out, and fit the whole world.
+    private var zoomButtons: some View {
+        let middle = CGPoint(x: size.width / 2, y: size.height / 2)
+        return VStack(spacing: 8) {
+            VStack(spacing: 0) {
+                Button { withAnimation(.easeOut(duration: 0.2)) { zoom(by: 1.6, keeping: middle) } } label: {
+                    Image(systemName: "plus").frame(width: 34, height: 30).contentShape(Rectangle())
+                }
+                .help("Zoom in")
+                .accessibilityLabel("Zoom in")
+                Divider().frame(width: 22)
+                Button { withAnimation(.easeOut(duration: 0.2)) { zoom(by: 1 / 1.6, keeping: middle) } } label: {
+                    Image(systemName: "minus").frame(width: 34, height: 30).contentShape(Rectangle())
+                }
+                .help("Zoom out")
+                .accessibilityLabel("Zoom out")
+            }
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+            Button { withAnimation(.easeOut(duration: 0.25)) { zoom = 1; offset = .zero } } label: {
+                Image(systemName: "arrow.down.right.and.arrow.up.left")
+                    .frame(width: 34, height: 30).contentShape(Rectangle())
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+            }
+            .help("Fit the whole world")
+            .accessibilityLabel("Fit the whole world")
+        }
+        .buttonStyle(.plain)
+        .font(.system(size: 13, weight: .semibold))
+        .padding(12)
     }
 }

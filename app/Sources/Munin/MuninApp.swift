@@ -20,6 +20,11 @@ struct MuninApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Open…") { model.chooseFile() }.keyboardShortcut("o")
+                Menu("Open Recent") {
+                    ForEach(model.worlds.filter { $0.lastOpened != nil }) { world in
+                        Button(world.name) { model.open(world.url) }
+                    }
+                }
             }
         }
     }

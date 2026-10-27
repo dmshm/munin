@@ -21,6 +21,8 @@ public enum WorldReader {
     public static let minimumVersion: Int32 = 33
     public static let chunkedVersion: Int32 = 42
     public static let testedVersions: Set<Int32> = [34, 42]
+    /// Versions of the `.chunk` files themselves, as found in real version 42 worlds.
+    public static let testedChunkVersions: Set<Int32> = [41, 42]
 
     public struct Result {
         public var version: Int32
@@ -151,7 +153,7 @@ public enum WorldReader {
         }
         let version = versions.max() ?? chunkedVersion
         var warnings: [String] = []
-        if versions.contains(where: { !testedVersions.contains($0) }) {
+        if versions.contains(where: { !testedChunkVersions.contains($0) }) {
             warnings.append("Chunk version \(versions.sorted()) has not been tested; every chunk parsed to its last byte, so it is probably fine.")
         }
         return Result(version: version, objects: objects, warnings: warnings, terrainEdits: edits)

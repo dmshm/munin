@@ -80,8 +80,12 @@ python3 -m venv /tmp/munin-venv && /tmp/munin-venv/bin/pip install UnityPy numpy
 app/bundle.sh && open app/Munin.app
 ```
 
-Open your world with ⌘O or drop it on the window. Munin opens a chunked world folder,
-any file inside one, an older single-file `<world>.db`, or a saved build `.json`.
+Munin lists the worlds it finds: single-player saves in Valheim's own save folder, and
+server worlds downloaded with `tools/fetch_world.sh`. Click one to open it. Next time,
+Munin reopens the last world by itself, and the world's name in the sidebar switches to
+any other in one click. For a save kept anywhere else, use **Open Other…** (⌘O) or drop
+it on the window: a chunked world folder, any file inside one, an older single-file
+`<world>.db`, or a saved build `.json`. It is remembered from then on.
 
 **4. Optional: the exact terrain.** A save holds only your edits to the terrain, not
 the terrain itself, so without this step Munin estimates the ground from where trees
@@ -99,13 +103,21 @@ changes nothing in the world.
 
 ## Controls
 
+Both the map and the 3D view move like Google Maps.
+
 | | |
 | --- | --- |
-| Move | drag, two-finger swipe, or W A S D / arrows |
-| Rotate | right-drag, ⌥-drag, two-finger rotate, or Q E |
-| Zoom | scroll or pinch, toward the cursor; or R F |
-| Fly to a spot | double-click |
+| Move | drag (let go while moving and it glides), or arrows / W A S D |
+| Zoom | scroll or pinch, toward the cursor; + and −; or the buttons bottom right |
+| Zoom in on a spot | double-click |
+| Rotate and tilt | ⌃-drag, ⌥-drag or right-drag; ⇧-arrows; two-finger rotate |
+| North up | click the compass, bottom right |
+| Look straight down | the 2D / 3D button, bottom right |
 | Layers | `[` and `]`, or the slider |
+
+A large 3D view renders at most about 7 million pixels and is scaled up to fit:
+frame cost follows the pixel count, and a full-screen view on a 5K display has
+12 million. **View › Full Resolution** renders every pixel instead.
 
 ## Repository
 
@@ -124,7 +136,9 @@ app/Munin.app/Contents/MacOS/Munin --snapshot <world|build.json> <out-dir> [buil
 ```
 
 This writes one PNG per view preset, plus two close-ups, without opening a window.
-`MUNIN_HOUR=22` renders at night.
+`MUNIN_HOUR=22` renders at night, and `MUNIN_TIMING=1` prints how long each loading
+step and a few frames take. In the app, `MUNIN_STATS=1` shows SceneKit's frame
+statistics and prints the frame rate and rendered size once a second.
 
 ### Tests
 

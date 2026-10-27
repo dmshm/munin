@@ -19,9 +19,15 @@ public struct Biome: OptionSet, Hashable {
 /// The ground as the game builds it: heights and biomes from the world generator
 /// (exported in game by the `munin_export` plugin, see mod/), plus the player's edits
 /// to it stored in the save (levelling, digging, paths, farmland).
-public final class Terrain {
+///
+/// An export covers every explored zone — thousands, hundreds of MB — while an area
+/// needs a handful, so zones are decoded, and their edits applied, on first use.
+public final class Terrain: @unchecked Sendable {
     public static let zoneSize = 64
     public static let side = 65
+    static let vertices = side * side
+    /// int16 x, z; then per vertex float height, uint16 biome, RGBA8 mask, float forest.
+    static let zoneBytes = 4 + vertices * (4 + 2 + 4 + 4)
 
     /// One zone's 65 × 65 vertices, 1 m apart, from its south-west corner; rows run
     /// south to north. Heights already include the edits.
@@ -36,11 +42,20 @@ public final class Terrain {
         public var forest: [Float]
     }
 
-    public private(set) var zones: [SIMD2<Int32>: Zone] = [:]
+    /// The export, usually memory-mapped, and where each zone's record starts in it.
+    private let data: Data
+    private let offsets: [SIMD2<Int32>: Int]
+    private var edits: [SIMD2<Int32>: [TerrainEdit]] = [:]
+    private var decoded: [SIMD2<Int32>: Zone] = [:]
+    private let lock = NSLock()
 
-    public init() {}
+    private init(data: Data, offsets: [SIMD2<Int32>: Int]) {
+        self.data = data
+        self.offsets = offsets
+    }
 
-    public var isEmpty: Bool { zones.isEmpty }
+    public var zoneCount: Int { offsets.count }
+    public var isEmpty: Bool { offsets.isEmpty }
 
     // MARK: - export file
 
@@ -52,9 +67,10 @@ public final class Terrain {
         }
     }
 
-    /// Read a `.terrain` written by the in-game exporter.
+    /// Read a `.terrain` written by the in-game exporter. Only the header and zone
+    /// coordinates are read here; pass memory-mapped data to keep the rest on disk.
     public static func load(_ data: Data) throws -> Terrain {
-        let terrain = Terrain()
+        var offsets: [SIMD2<Int32>: Int] = [:]
         try data.withUnsafeBytes { raw in
             var r = ByteReader(raw)
             let magic: UInt32 = try r.read()
@@ -66,32 +82,59 @@ public final class Terrain {
             guard version == 2, zoneSize == Int32(Terrain.zoneSize), side == Int32(Terrain.side) else {
                 throw Failure.notAnExport("version \(version), zone \(zoneSize), side \(side)")
             }
-            let n = Terrain.side * Terrain.side
-            for _ in 0..<Int(count) {
+            guard count >= 0, raw.count == r.offset + Int(count) * zoneBytes else {
+                throw Failure.notAnExport("\(raw.count) bytes do not hold \(count) zones")
+            }
+            offsets.reserveCapacity(Int(count))
+            for i in 0..<Int(count) {
+                let start = 20 + i * zoneBytes
+                r.offset = start
                 let x: Int16 = try r.read()
                 let z: Int16 = try r.read()
-                var zone = Zone(heights: [], biomes: [], masks: [], paint: Array(repeating: .zero, count: n), forest: [])
-                zone.heights.reserveCapacity(n)
-                for _ in 0..<n { zone.heights.append(try r.read()) }
-                for _ in 0..<n { zone.biomes.append(try r.read()) }
-                for _ in 0..<n { zone.masks.append(SIMD4(try r.read(), try r.read(), try r.read(), try r.read())) }
-                for _ in 0..<n { zone.forest.append(try r.read()) }
-                terrain.zones[SIMD2(Int32(x), Int32(z))] = zone
+                offsets[SIMD2(Int32(x), Int32(z))] = start + 4
             }
         }
-        return terrain
+        return Terrain(data: data, offsets: offsets)
     }
 
     // MARK: - edits from the save
 
-    /// Apply a world's terrain edits (`_TerrainCompiler` objects' `TCData`).
+    /// Apply a world's terrain edits (`_TerrainCompiler` objects' `TCData`) to the
+    /// zones they belong to, as each zone is decoded.
     public func apply(_ edits: [TerrainEdit]) {
-        for edit in edits {
-            guard var zone = zones[edit.zone] else { continue }
+        lock.lock(); defer { lock.unlock() }
+        for edit in edits where offsets[edit.zone] != nil {
+            self.edits[edit.zone, default: []].append(edit)
+            decoded[edit.zone] = nil
+        }
+    }
+
+    /// A zone with its edits applied, decoded the first time it is asked for.
+    public func zone(_ key: SIMD2<Int32>) -> Zone? {
+        lock.lock(); defer { lock.unlock() }
+        if let zone = decoded[key] { return zone }
+        guard let start = offsets[key] else { return nil }
+        let n = Terrain.vertices
+        func copy<T>(_ type: T.Type, at offset: Int) -> [T] {
+            [T](unsafeUninitializedCapacity: n) { buffer, count in
+                data.withUnsafeBytes { raw in
+                    _ = memcpy(buffer.baseAddress!, raw.baseAddress! + offset, n * MemoryLayout<T>.stride)
+                }
+                count = n
+            }
+        }
+        // Little-endian on disk and in memory on every Mac this runs on.
+        var zone = Zone(heights: copy(Float.self, at: start),
+                        biomes: copy(UInt16.self, at: start + n * 4),
+                        masks: copy(SIMD4<UInt8>.self, at: start + n * 6),
+                        paint: Array(repeating: .zero, count: n),
+                        forest: copy(Float.self, at: start + n * 10))
+        for edit in edits[key] ?? [] {
             for (i, delta) in edit.heightDeltas { zone.heights[i] += delta }
             for (i, color) in edit.paint { zone.paint[i] = color }
-            zones[edit.zone] = zone
         }
+        decoded[key] = zone
+        return zone
     }
 
     // MARK: - sampling
@@ -100,7 +143,7 @@ public final class Terrain {
     private func locate(_ x: Float, _ z: Float) -> (Zone, Float, Float)? {
         let size = Float(Terrain.zoneSize)
         let zx = Int32((x / size).rounded()), zz = Int32((z / size).rounded())
-        guard let zone = zones[SIMD2(zx, zz)] else { return nil }
+        guard let zone = zone(SIMD2(zx, zz)) else { return nil }
         let fx = x - (Float(zx) * size - size / 2), fz = z - (Float(zz) * size - size / 2)
         return (zone, min(max(fx, 0), size), min(max(fz, 0), size))
     }

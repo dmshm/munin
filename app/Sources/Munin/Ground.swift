@@ -149,6 +149,7 @@ enum Ground {
         m.shaderModifiers = [.geometry: geometryModifier, .surface: surfaceModifier(uvScale: layers.uvScale)]
         geometry.materials = [m]
         let node = SCNNode(geometry: geometry)
+        node.name = "ground"
         node.categoryBitMask = BuildScene.decorationMask
         return node
     }
@@ -164,6 +165,7 @@ enum Ground {
             print("clutter:", counts.sorted { $0.1 > $1.1 })
         }
         let node = SCNNode()
+        node.name = "grass"
         node.categoryBitMask = BuildScene.decorationMask
         for (index, rule) in settings.rules.enumerated() {
             let mine = instances.filter { $0.rule == index }
@@ -197,24 +199,24 @@ enum Ground {
             let at = sceneKitPosition(inst.position)
             for v in 0..<n {
                 let p = q.act(SIMD3(part.positions[v * 3], part.positions[v * 3 + 1], part.positions[v * 3 + 2]) * inst.scale) + at
-                pos += [p.x, p.y, p.z]
+                pos.append(p.x); pos.append(p.y); pos.append(p.z)
                 if part.cutoff != nil {
                     // Like the game's grass shader: blades lit as the ground under them,
                     // not by their own crossed quads (half of which face away from the sun).
-                    nrm += [0, 1, 0]
+                    nrm.append(0); nrm.append(1); nrm.append(0)
                 } else if let normals = part.normals {
                     let nn = q.act(SIMD3(normals[v * 3], normals[v * 3 + 1], normals[v * 3 + 2]))
-                    nrm += [nn.x, nn.y, nn.z]
+                    nrm.append(nn.x); nrm.append(nn.y); nrm.append(nn.z)
                 }
             }
-            uv += part.uvs
-            swayAll += sway
-            idx += part.indices.map { $0 + base }
+            uv.append(contentsOf: part.uvs)
+            swayAll.append(contentsOf: sway)
+            idx.append(contentsOf: part.indices.lazy.map { $0 + base })
             if let (map, scale) = part.terrainColor {
                 // As the game's grass shader: colour from the map at the tuft's world position.
                 // SceneKit takes vertex colours as sRGB, like the map itself.
                 let c = map.color(u: (inst.position.x + origin.x) * scale, v: (inst.position.z + origin.z) * scale)
-                for _ in 0..<n { colors += [c.x, c.y, c.z, 1] }
+                for _ in 0..<n { colors.append(c.x); colors.append(c.y); colors.append(c.z); colors.append(1) }
             }
         }
         let source = { (values: [Float], semantic: SCNGeometrySource.Semantic, k: Int) in
@@ -233,11 +235,14 @@ enum Ground {
         part.material.shaderModifiers = [.geometry: Wind.grass]
         if let cutoff = part.cutoff {
             part.material.shaderModifiers?[.fragment] = """
+                #pragma arguments
+                float alphaCutoff;
                 #pragma body
                 float near = saturate(1.0 - length(_surface.position) / 70.0);
-                if (_output.color.a < \(cutoff) * (0.3 + 0.7 * near)) { discard_fragment(); }
+                if (_output.color.a < alphaCutoff * (0.3 + 0.7 * near)) { discard_fragment(); }
                 _output.color.a = 1.0;
                 """
+            part.material.setValue(NSNumber(value: cutoff), forKey: "alphaCutoff")
         }
         geometry.materials = [part.material]
         return geometry

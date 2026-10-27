@@ -238,3 +238,32 @@ private func gzip(_ data: Data) throws -> Data {
                               origin: content.build.origin, waterLevel: content.waterLevel, radius: 24)
     #expect(again.map(\.position) == grass.map(\.position))
 }
+
+/// One-click worlds: chunked folders and .db saves are found, backups and empty
+/// folders are not, and the ones opened before come first.
+@Test func discoversWorldsAndPutsRecentFirst() throws {
+    let fm = FileManager.default
+    let root = fm.temporaryDirectory.appendingPathComponent("munin-library-\(UUID().uuidString)")
+    defer { try? fm.removeItem(at: root) }
+    let server = root.appendingPathComponent("server"), game = root.appendingPathComponent("game")
+    try fm.createDirectory(at: server.appendingPathComponent("Alpha"), withIntermediateDirectories: true)
+    try fm.createDirectory(at: game.appendingPathComponent("Empty"), withIntermediateDirectories: true)
+    func touch(_ url: URL, daysAgo: Double) throws {
+        try Data([0]).write(to: url)
+        try fm.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -daysAgo * 86_400)], ofItemAtPath: url.path)
+    }
+    try touch(server.appendingPathComponent("Alpha/0_0__1_3.chunk"), daysAgo: 1)
+    try touch(game.appendingPathComponent("Beta.db"), daysAgo: 3)
+    try touch(game.appendingPathComponent("Beta_backup_auto-20260101.db"), daysAgo: 0)
+    try touch(game.appendingPathComponent("Gamma.db"), daysAgo: 9)
+
+    let worlds = WorldLibrary.discover(
+        recent: [(game.appendingPathComponent("Gamma.db"), Date()), (root.appendingPathComponent("Gone.db"), Date())],
+        folders: [(server, .server), (game, .game)])
+
+    #expect(worlds.map(\.name) == ["Gamma", "Alpha", "Beta"])
+    #expect(worlds[0].lastOpened != nil && worlds[0].source == .game)
+    #expect(worlds[1].source == .server && worlds[1].url.lastPathComponent == "Alpha")
+    // A file inside a chunked world stands for the whole folder.
+    #expect(WorldLibrary.entry(at: server.appendingPathComponent("Alpha/0_0__1_3.chunk"), source: .other)?.name == "Alpha")
+}

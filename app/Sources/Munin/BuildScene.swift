@@ -26,13 +26,15 @@ final class BuildScene {
     let sun = SCNNode()
     let ambient = SCNNode()
     let fireScale = FireScale()
+    /// Heading and tilt, for the compass and the 2D/3D button.
+    let cameraState = CameraState()
     private(set) var nodes: [SCNNode] = []
     private let surroundings = SCNNode()
     /// Height of each piece rounded to half a metre; distinct values are the layers.
     let levelOf: [Float]
     let levels: [Float]
     private var geometries: [String: (normal: SCNGeometry, dim: SCNGeometry)] = [:]
-    private var propNodes: [(node: SCNNode, object: Piece)] = []
+    private(set) var propNodes: [(node: SCNNode, object: Piece)] = []
 
     init(build: Build, catalog: PieceCatalog?, region: RegionContent? = nil) {
         self.build = build
@@ -46,10 +48,11 @@ final class BuildScene {
         if let region {
             if let ground = region.ground {
                 let radius = region.region.radius + 8
-                if ground.isExact, let catalog, let exact = Ground.node(ground, waterLevel: region.waterLevel, radius: radius, catalog: catalog) {
+                if ground.isExact, let catalog,
+                   let exact = Timing.measure("  ground mesh", { Ground.node(ground, waterLevel: region.waterLevel, radius: radius, catalog: catalog) }) {
                     surroundings.addChildNode(exact)
-                    if let grass = Ground.clutterNode(ground, origin: build.origin, waterLevel: region.waterLevel,
-                                                      radius: region.region.radius, catalog: catalog) {
+                    if let grass = Timing.measure("  grass", { Ground.clutterNode(ground, origin: build.origin, waterLevel: region.waterLevel,
+                                                      radius: region.region.radius, catalog: catalog) }) {
                         surroundings.addChildNode(grass)
                     }
                 } else {
@@ -59,6 +62,7 @@ final class BuildScene {
             // Only where the sea reaches the area; otherwise inland bases look like islands.
             let lowest = region.ground?.heights.min() ?? region.waterLevel
             if region.waterLevel > lowest - 1 { surroundings.addChildNode(waterNode(region)) }
+            let propsStart = CACurrentMediaTime()
             for (i, prop) in props.enumerated() {
                 guard let geometry = catalog?.geometry(for: prop.name) else { continue }
                 if WorldMap.kind(of: prop.name) == .tree { Self.addWind(geometry) }
@@ -69,11 +73,13 @@ final class BuildScene {
                 surroundings.addChildNode(node)
                 propNodes.append((node, prop))
             }
+            Timing.report("  props (\(props.count))", since: propsStart)
         } else {
             scene.rootNode.addChildNode(grid())
         }
         scene.rootNode.addChildNode(compass())
 
+        let piecesStart = CACurrentMediaTime()
         for (i, piece) in build.pieces.enumerated() {
             let node = SCNNode(geometry: geometries(for: piece, catalog).normal)
             node.name = "piece:\(i)"
@@ -81,6 +87,7 @@ final class BuildScene {
             scene.rootNode.addChildNode(node)
             nodes.append(node)
         }
+        Timing.report("  pieces (\(build.pieces.count))", since: piecesStart)
 
         if let catalog {
             addFires(Array(zip(nodes, build.pieces)).map { ($0.0, $0.1) } + propNodes, catalog: catalog)
@@ -92,8 +99,8 @@ final class BuildScene {
         cam.zFar = 3000
         cam.wantsHDR = true
         cam.wantsExposureAdaptation = false // it chases the bright sky and greys everything out
-        cam.screenSpaceAmbientOcclusionIntensity = 0.9
-        cam.screenSpaceAmbientOcclusionRadius = 1.2
+        // No screen-space ambient occlusion: at 5K it cost 40% of the frame rate and
+        // streaked stone walls with dark bands; the sun's shadows give the depth.
         cam.bloomIntensity = 0.15
         camera.camera = cam
         scene.rootNode.addChildNode(camera)

@@ -25,15 +25,16 @@ enum Snapshot {
 
     /// `at`: world x, z to centre an area on instead of a build.
     static func run(input: URL, out: URL, index: Int, at: SIMD2<Float>? = nil, radius: Float) throws {
-        let catalog = try? PieceCatalog()
+        let catalog = Timing.measure("catalog") { try? PieceCatalog() }
         let scene: BuildScene
         if input.pathExtension.lowercased() == "json" {
             scene = BuildScene(build: try BuildFile.load(Data(contentsOf: input)), catalog: catalog)
         } else {
             // A world renders the build with its surroundings, as the app shows it.
-            let world = try WorldReader.load(input)
-            let builds = clusterPieces(world.pieces)
-            let (props, ground) = catalog?.classify(world.objects) ?? ([], [])
+            let world = try Timing.measure("read world") { try WorldReader.load(input) }
+            let builds = Timing.measure("cluster builds") { clusterPieces(world.pieces) }
+            let (props, ground) = Timing.measure("classify prefabs") { catalog?.classify(world.objects) ?? ([], []) }
+            _ = Timing.measure("render map") { WorldMap.render(world.objects) }
             let region: Region
             var name: String?
             if let at {
@@ -44,11 +45,11 @@ enum Snapshot {
                 region = Region(center: SIMD2(build.origin.x, build.origin.z), radius: max(radius, max(build.size.x, build.size.z) / 2 + 20))
                 name = build.name
             }
-            let (terrain, note) = TerrainStore.load(for: input, edits: world.terrainEdits)
+            let (terrain, note) = Timing.measure("load terrain") { TerrainStore.load(for: input, edits: world.terrainEdits) }
             print(note)
-            let content = RegionContent.cut(world.objects, region: region, name: name, terrain: terrain,
-                                            isGroundSample: { ground.contains($0) }, includeProp: { props.contains($0) })
-            scene = BuildScene(build: content.build, catalog: catalog, region: content)
+            let content = Timing.measure("cut region") { RegionContent.cut(world.objects, region: region, name: name, terrain: terrain,
+                                            isGroundSample: { ground.contains($0) }, includeProp: { props.contains($0) }) }
+            scene = Timing.measure("build scene (total)") { BuildScene(build: content.build, catalog: catalog, region: content) }
         }
         scene.apply(level: scene.levels.count - 1, ghosts: true, focus: nil)
         if let hour = ProcessInfo.processInfo.environment["MUNIN_HOUR"].flatMap(Float.init) { scene.setTime(hour) }
@@ -57,6 +58,14 @@ enum Snapshot {
         let renderer = SCNRenderer(device: MTLCreateSystemDefaultDevice(), options: nil)
         renderer.scene = scene.scene
         renderer.pointOfView = scene.camera
+        if Timing.enabled {
+            // Frame cost, roughly: the first frame compiles shaders, later ones are steady state.
+            scene.frame(.iso)
+            _ = Timing.measure("first frame") { renderer.snapshot(atTime: 0, with: CGSize(width: 1600, height: 1000), antialiasingMode: .multisampling4X) }
+            let start = CACurrentMediaTime()
+            for i in 1...20 { _ = renderer.snapshot(atTime: Double(i) / 60, with: CGSize(width: 1600, height: 1000), antialiasingMode: .multisampling4X) }
+            Timing.report("20 more frames", since: start)
+        }
         for (preset, zoom, suffix) in ViewPreset.allCases.map({ ($0, Float(1), "") }) + [(.iso, 3, "-close"), (.south, 4, "-close"), (.south, 12, "-ground")] {
             scene.frame(preset, zoom: zoom)
             // A couple of seconds in, so flames have risen.

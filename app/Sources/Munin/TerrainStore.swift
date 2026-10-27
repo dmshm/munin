@@ -28,9 +28,9 @@ enum TerrainStore {
             file = folder.appendingPathComponent(all[0])
         }
         do {
-            let terrain = try Terrain.load(Data(contentsOf: file, options: .mappedIfSafe))
+            let terrain = try Terrain.load(Data(contentsOf: file, options: .alwaysMapped))
             terrain.apply(edits)
-            return (terrain, "exact terrain: \(terrain.zones.count) zones, \(edits.count) edited by players")
+            return (terrain, "exact terrain: \(terrain.zoneCount) zones, \(edits.count) edited by players")
         } catch {
             return (nil, "terrain export unreadable (\(error.localizedDescription)); ground estimated")
         }

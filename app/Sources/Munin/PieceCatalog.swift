@@ -83,6 +83,8 @@ final class PieceCatalog {
     private let blob: Data
     private var geometries: [String: SCNGeometry] = [:]
     private var textures: [String: NSImage] = [:]
+    /// Scenes are built off the main thread; the caches below are shared between them.
+    private let lock = NSRecursiveLock()
 
     init(directory: URL = PieceCatalog.defaultDirectory) throws {
         self.directory = directory
@@ -118,6 +120,7 @@ final class PieceCatalog {
     /// Geometry in SceneKit's frame, shared by every node showing this piece.
     func geometry(for name: String?) -> SCNGeometry? {
         guard let name, let entry = manifest.pieces[name] else { return nil }
+        lock.lock(); defer { lock.unlock() }
         if let cached = geometries[name] { return cached }
         let parts = entry.parts.map(makeGeometry)
         let geometry = parts.count == 1 ? parts[0] : merge(parts)
@@ -152,6 +155,7 @@ final class PieceCatalog {
 
     func partData(for name: String) -> [PartData] {
         guard let entry = manifest.pieces[name] else { return [] }
+        lock.lock(); defer { lock.unlock() }
         return entry.parts.map(partData)
     }
 
@@ -181,7 +185,10 @@ final class PieceCatalog {
         return map
     }
 
-    func image(named name: String) -> NSImage? { texture(name) }
+    func image(named name: String) -> NSImage? {
+        lock.lock(); defer { lock.unlock() }
+        return texture(name)
+    }
 
     private func makeGeometry(_ part: Part) -> SCNGeometry {
         let data = partData(part)
@@ -237,15 +244,21 @@ final class PieceCatalog {
         if let cutoff = part.cutoff {
             // Alpha test, as the game does: cut the holes, keep the rest opaque so
             // nothing needs depth sorting.
-            m.shaderModifiers = [.fragment: """
-                #pragma body
-                if (_output.color.a < \(cutoff)) { discard_fragment(); }
-                _output.color.a = 1.0;
-                """]
+            // The cutoff is an argument, not text, so every cut-out shares one shader.
+            m.shaderModifiers = [.fragment: Self.cutoutModifier]
+            m.setValue(NSNumber(value: cutoff), forKey: "alphaCutoff")
             m.blendMode = .replace
         }
         return m
     }
+
+    static let cutoutModifier = """
+        #pragma arguments
+        float alphaCutoff;
+        #pragma body
+        if (_output.color.a < alphaCutoff) { discard_fragment(); }
+        _output.color.a = 1.0;
+        """
 
     private func configure(_ property: SCNMaterialProperty, point: Bool) {
         property.wrapS = .repeat
