@@ -1,0 +1,986 @@
+{
+ "format": "munin-build/1",
+ "name": "Example watchtower",
+ "origin": [
+  0,
+  0,
+  0
+ ],
+ "pieces": [
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    -1,
+    0,
+    -1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    -1,
+    0,
+    1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    1,
+    0,
+    -1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    1,
+    0,
+    1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    -2,
+    1,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    -2,
+    1,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    2,
+    1,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    2,
+    1,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -1,
+    1,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -1,
+    1,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    1,
+    1,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    2,
+    1,
+    -1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -2,
+    1,
+    -1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    2,
+    1,
+    1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -2,
+    1,
+    1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    -1,
+    2,
+    -1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    -1,
+    2,
+    1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    1,
+    2,
+    -1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    1,
+    2,
+    1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    -2,
+    3,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    -2,
+    3,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    2,
+    3,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    2,
+    3,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -1,
+    3,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -1,
+    3,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    1,
+    3,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    1,
+    3,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    2,
+    3,
+    -1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -2,
+    3,
+    -1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    2,
+    3,
+    1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -2,
+    3,
+    1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    -1,
+    4,
+    -1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    -1,
+    4,
+    1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    1,
+    4,
+    -1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    1,
+    4,
+    1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    -2,
+    5,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    -2,
+    5,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    2,
+    5,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    2,
+    5,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -1,
+    5,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -1,
+    5,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    1,
+    5,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    1,
+    5,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    2,
+    5,
+    -1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -2,
+    5,
+    -1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    2,
+    5,
+    1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "woodwall",
+   "pos": [
+    -2,
+    5,
+    1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    -1,
+    6,
+    -1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    -1,
+    6,
+    1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    1,
+    6,
+    -1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_floor",
+   "pos": [
+    1,
+    6,
+    1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    -2,
+    7,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    -2,
+    7,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    2,
+    7,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_pole2",
+   "pos": [
+    2,
+    7,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_half",
+   "pos": [
+    -1,
+    6.5,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_half",
+   "pos": [
+    -1,
+    6.5,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_half",
+   "pos": [
+    1,
+    6.5,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_half",
+   "pos": [
+    1,
+    6.5,
+    2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_half",
+   "pos": [
+    2,
+    6.5,
+    -1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_half",
+   "pos": [
+    -2,
+    6.5,
+    -1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_half",
+   "pos": [
+    2,
+    6.5,
+    1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_half",
+   "pos": [
+    -2,
+    6.5,
+    1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_door",
+   "pos": [
+    1,
+    1,
+    -2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_roof",
+   "pos": [
+    -1,
+    8,
+    -1
+   ],
+   "rot": [
+    0,
+    180,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_roof",
+   "pos": [
+    -1,
+    8,
+    1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_roof",
+   "pos": [
+    1,
+    8,
+    -1
+   ],
+   "rot": [
+    0,
+    180,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_roof",
+   "pos": [
+    1,
+    8,
+    1
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_roof",
+   "pos": [
+    -2,
+    8,
+    -1
+   ],
+   "rot": [
+    0,
+    270,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_roof",
+   "pos": [
+    -2,
+    8,
+    1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_roof",
+   "pos": [
+    2,
+    8,
+    -1
+   ],
+   "rot": [
+    0,
+    270,
+    0
+   ]
+  },
+  {
+   "prefab": "wood_wall_roof",
+   "pos": [
+    2,
+    8,
+    1
+   ],
+   "rot": [
+    0,
+    90,
+    0
+   ]
+  },
+  {
+   "prefab": "piece_workbench",
+   "pos": [
+    0,
+    2,
+    1.2
+   ],
+   "rot": [
+    0,
+    180,
+    0
+   ]
+  },
+  {
+   "prefab": "piece_chest_wood",
+   "pos": [
+    -1.2,
+    4,
+    1.2
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "prefab": "piece_walltorch",
+   "pos": [
+    -1,
+    1.6,
+    -2.25
+   ],
+   "rot": [
+    0,
+    180,
+    0
+   ]
+  }
+ ]
+}

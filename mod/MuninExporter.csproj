@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    BepInEx plugin, compiled against the game's and BepInEx's own assemblies on this
+    machine; none of them are copied into the output. Override the two paths with
+    -p:GameManaged=… -p:BepInExCore=… if they live elsewhere.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>MuninExporter</AssemblyName>
+    <RootNamespace>Munin</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <GameManaged Condition="'$(GameManaged)' == ''">$(HOME)/Library/Application Support/Steam/steamapps/common/Valheim/valheim.app/Contents/Resources/Data/Managed</GameManaged>
+    <BepInExCore Condition="'$(BepInExCore)' == ''">$(HOME)/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/core</BepInExCore>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx" HintPath="$(BepInExCore)/BepInEx.dll" Private="false" />
+    <Reference Include="assembly_valheim" HintPath="$(GameManaged)/assembly_valheim.dll" Private="false" />
+    <Reference Include="assembly_utils" HintPath="$(GameManaged)/assembly_utils.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(GameManaged)/UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GameManaged)/UnityEngine.CoreModule.dll" Private="false" />
+  </ItemGroup>
+</Project>

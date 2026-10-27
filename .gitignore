@@ -1,0 +1,12 @@
+# Build output
+app/.build/
+app/Munin.app/
+mod/bin/
+mod/obj/
+
+# Never commit credentials or local settings
+*.env
+.env*
+.claude/settings.local.json
+
+.DS_Store
