@@ -1,6 +1,7 @@
 # Build output
 app/.build/
 app/Munin.app/
+app/dist/
 mod/bin/
 mod/obj/
 

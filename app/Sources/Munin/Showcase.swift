@@ -25,7 +25,7 @@ enum Showcase {
 
     static func run(out: URL) throws {
         guard let catalog = try? PieceCatalog() else { throw CocoaError(.fileNoSuchFile) }
-        guard let url = Bundle.module.url(forResource: "watchtower", withExtension: "json") else { throw CocoaError(.fileNoSuchFile) }
+        guard let url = Resource.url("watchtower", "json") else { throw CocoaError(.fileNoSuchFile) }
         let tower = try BuildFile.load(Data(contentsOf: url))
         let ground = terrain()
         let content = RegionContent(region: Region(center: SIMD2(origin.x, origin.z), radius: radius),

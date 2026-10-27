@@ -22,6 +22,7 @@ struct ContentView: View {
                 model.openLastWorld()
             }
         }
+        .sheet(isPresented: $model.showSetup) { SetupSheet(setup: model.setup) }
         .onDrop(of: [.fileURL], isTargeted: $dropTargeted) { providers in
             _ = providers.first?.loadObject(ofClass: URL.self) { url, _ in
                 if let url { Task { @MainActor in model.open(url) } }
@@ -139,7 +140,7 @@ struct ContentView: View {
         RoundedRectangle(cornerRadius: 12)
             .strokeBorder(Theme.ember, style: StrokeStyle(lineWidth: 2, dash: [8]))
             .background(Theme.ember.opacity(0.08))
-            .overlay(Text("Drop a world (.db or chunked folder) or a build .json").font(.title3))
+            .overlay(Text("Drop a shared map (.zip), a world or a build .json").font(.title3))
             .padding(12)
     }
 }

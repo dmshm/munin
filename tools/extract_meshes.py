@@ -675,7 +675,8 @@ def main():
     ap.add_argument('--game', type=Path, default=DEFAULT_GAME, help='Valheim Data directory')
     ap.add_argument('--extra', type=Path, action='append', default=[], help='more asset bundles to scan, e.g. a mod folder')
     ap.add_argument('--out', type=Path, default=DEFAULT_OUT)
-    ap.add_argument('--world', type=Path, help='also extract the props this world uses (chunked world directory or .db)')
+    ap.add_argument('--world', type=Path, action='append', default=[],
+                    help='also extract the props this world uses (chunked world directory or .db); repeatable')
     ap.add_argument('--only', help='comma-separated prefab names, for a quick test run')
     ap.add_argument('--texture-size', type=int, default=1024, help='largest texture edge kept (default 1024)')
     ap.add_argument('--prop-lod', type=int, default=1, help='LOD level for props (default 1; pieces always use 0)')
@@ -700,9 +701,11 @@ def main():
     print(f'loaded {len(env.files)} files in {time.time() - t:.0f}s', flush=True)
 
     only = set(args.only.split(',')) if args.only else None
-    wanted = world_prefabs(args.world) if args.world else None
-    if wanted is not None:
-        print(f'{len(wanted)} distinct prefabs in {args.world.name}', flush=True)
+    wanted = None
+    for world in args.world:
+        found = world_prefabs(world)
+        print(f'{len(found)} distinct prefabs in {world.name}', flush=True)
+        wanted = (wanted or set()) | found
     roots = find_roots(env, wanted, only, extra_names=mod_names(mod_files) if wanted is not None else ())
     kinds = {}
     for _, kind in roots.values():

@@ -95,6 +95,8 @@ struct WorldCard: View {
             }
             if let warning = model.catalogError {
                 note(warning, symbol: "exclamationmark.triangle", color: .orange)
+                Button("Set Up Game Assets…") { model.showSetup = true }
+                    .controlSize(.small)
             }
         }
         .padding(12)

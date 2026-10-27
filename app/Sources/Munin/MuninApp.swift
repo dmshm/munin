@@ -26,8 +26,24 @@ struct MuninApp: App {
                         Button(world.name) { model.open(world.url) }
                     }
                 }
+                Divider()
+                Button("Export Map…") { model.exportMap() }
+                    .keyboardShortcut("e", modifiers: [.command, .shift])
+                    .disabled(!model.canExportMap)
+            }
+            CommandGroup(after: .appInfo) {
+                Button("Set Up Game Assets…") { model.showSetup = true }
             }
         }
+    }
+}
+
+/// Files that ship with the app. bundle.sh puts them in the app's Resources; SwiftPM's
+/// own resource bundle is only a fallback for `swift run`, because its accessor looks
+/// for it at the app's top level and then in this machine's build folder.
+enum Resource {
+    static func url(_ name: String, _ ext: String) -> URL? {
+        Bundle.main.url(forResource: name, withExtension: ext) ?? Bundle.module.url(forResource: name, withExtension: ext)
     }
 }
 

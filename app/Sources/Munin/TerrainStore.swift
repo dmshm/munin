@@ -19,14 +19,7 @@ enum TerrainStore {
     /// The exported terrain for this world, with the save's edits applied; nil when
     /// `munin_export` has not been run for it yet.
     static func load(for url: URL, edits: [TerrainEdit]) -> (terrain: Terrain?, note: String) {
-        let folder = root.appendingPathComponent("terrain")
-        var file = folder.appendingPathComponent(worldName(for: url) + ".terrain")
-        if !FileManager.default.fileExists(atPath: file.path) {
-            // The exporter names the file after the server's world, which may differ.
-            let all = ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).filter { $0.hasSuffix(".terrain") }
-            guard all.count == 1 else { return (nil, "ground estimated — run munin_export in game for the exact terrain") }
-            file = folder.appendingPathComponent(all[0])
-        }
+        guard let file = file(for: url) else { return (nil, "ground estimated — run munin_export in game for the exact terrain") }
         do {
             let terrain = try Terrain.load(Data(contentsOf: file, options: .alwaysMapped))
             terrain.apply(edits)
@@ -34,6 +27,17 @@ enum TerrainStore {
         } catch {
             return (nil, "terrain export unreadable (\(error.localizedDescription)); ground estimated")
         }
+    }
+
+    static var folder: URL { root.appendingPathComponent("terrain") }
+
+    /// The world's `.terrain`, if `munin_export` has written one.
+    static func file(for url: URL) -> URL? {
+        let file = folder.appendingPathComponent(worldName(for: url) + ".terrain")
+        if FileManager.default.fileExists(atPath: file.path) { return file }
+        // The exporter names the file after the server's world, which may differ.
+        let all = ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).filter { $0.hasSuffix(".terrain") }
+        return all.count == 1 ? folder.appendingPathComponent(all[0]) : nil
     }
 
     /// Zones the world has generated, for `munin_export` to export.

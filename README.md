@@ -49,7 +49,30 @@ fires around it. Step through a build layer by layer to see which piece went whe
 - **Hover for details.** Name, offset from the centre and facing of any piece.
 - **Save a build** to a small JSON file that opens without the world.
 
-## Requirements
+## Install
+
+You need macOS 14 or later, on Apple silicon or Intel, and Valheim installed through
+Steam on the same Mac.
+
+1. **Download** `Munin-<version>.zip` from
+   [Releases](https://github.com/dmshm/munin/releases/latest), unzip it and move
+   Munin to Applications.
+2. **Open it once by hand.** Munin is not notarized: that needs a paid Apple developer
+   account. The first time, macOS says it can't check the app. Click **Done**, open
+   **System Settings › Privacy & Security**, scroll down to the message about Munin
+   and click **Open Anyway**. From then on it opens normally.
+3. **Set up the game assets:** **Munin › Set Up Game Assets…**, or the button in the
+   window. Munin reads the meshes and textures from your copy of Valheim, including
+   your mods if r2modman or r2modmac manages them. The first run downloads two Python
+   libraries (UnityPy and numpy) into Munin's own folder. It then takes about three
+   minutes and 6 GB of memory. If the Mac has no Python yet, macOS offers to install
+   the Command Line Tools, which include it. Run the setup again after a game update
+   or after adding a world.
+4. **Open a world.** Single-player saves show up by themselves. To open a map a
+   friend sent you, drop the `.zip` onto the window. To send one, open the world and
+   choose **File › Export Map…**. That makes one zip with the save and its terrain.
+
+## Build from source
 
 - macOS 14 or later, with Swift 6 (Xcode 16 or the Command Line Tools)
 - Valheim installed through Steam, for the meshes and textures
@@ -57,10 +80,9 @@ fires around it. Step through a build layer by layer to see which piece went whe
 - Optional: the .NET SDK and [BepInEx](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/)
   (for example through r2modman), for the exact terrain
 
-## Getting started
-
 Munin ships no game assets. They are extracted from your copy of the game into
-`~/Library/Application Support/Munin/catalog`.
+`~/Library/Application Support/Munin/catalog`, by **Set Up Game Assets…** in the app
+(`tools/setup_assets.sh`) or by hand as below.
 
 **1. Get your world.** Single-player saves are in
 `~/Library/Application Support/IronGate/Valheim/worlds_local`. For a dedicated server,
@@ -92,10 +114,14 @@ python3 -m venv /tmp/munin-venv && /tmp/munin-venv/bin/pip install UnityPy numpy
 app/bundle.sh && open app/Munin.app
 ```
 
+`app/bundle.sh --release` builds for Apple silicon and Intel and zips the app into
+`app/dist/`, ready to attach to a release.
+
 Munin lists the worlds it finds: single-player saves in Valheim's own save folder, and
 server worlds downloaded with `tools/fetch_world.sh`. Click one to open it. Next time,
 Munin reopens the last world by itself, and the world's name in the sidebar switches to
-any other in one click. For a save kept anywhere else, use **Open Other…** (⌘O) or drop
+any other in one click. A shared map (`.zip`, from **File › Export Map…**) can be
+dropped on the window; it is unpacked into Munin's own folder. For a save kept anywhere else, use **Open Other…** (⌘O) or drop
 it on the window: a chunked world folder, any file inside one, an older single-file
 `<world>.db`, or a saved build `.json`. It is remembered from then on.
 
@@ -138,6 +164,7 @@ frame cost follows the pixel count, and a full-screen view on a 5K display has
 | `app/` | SwiftUI + SceneKit app, built with SwiftPM (no Xcode project). `MuninCore` holds the save reader, clustering, terrain and region cutting; it has no UI, so it is tested on its own. |
 | `app/Icon/` | The app icon, drawn in code (`make_icon.swift`). |
 | `tools/extract_meshes.py` | Pulls meshes, textures, lights and the grass rules out of a local Valheim install into the catalog the app reads. Mod bundles embedded in DLLs are cut out and included. |
+| `tools/setup_assets.sh` | What **Set Up Game Assets…** runs: finds the game, Python and your mods, then runs the extractor. |
 | `tools/fetch_world.sh` | Downloads the latest world from a dedicated server over FTP. |
 | `mod/` | `munin_export`, a small read-only BepInEx plugin that asks the game's world generator for the terrain of every explored zone. |
 

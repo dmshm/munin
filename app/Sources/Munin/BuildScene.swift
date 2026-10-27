@@ -33,7 +33,9 @@ final class BuildScene {
     /// Height of each piece rounded to half a metre; distinct values are the layers.
     let levelOf: [Float]
     let levels: [Float]
-    private var geometries: [String: (normal: SCNGeometry, dim: SCNGeometry)] = [:]
+    /// Shapes per prefab, by hash: a name can appear while the scene is shown, when the
+    /// game assets finish setting up.
+    private var geometries: [Int32: (normal: SCNGeometry, dim: SCNGeometry)] = [:]
     private(set) var propNodes: [(node: SCNNode, object: Piece)] = []
 
     init(build: Build, catalog: PieceCatalog?, region: RegionContent? = nil) {
@@ -131,7 +133,7 @@ final class BuildScene {
             let piece = build.pieces[i]
             let visible = levelOf[i] <= cut
             let focused = focus.map { piece.label == $0 } ?? (!cutting || levelOf[i] == cut)
-            let pair = geometries[piece.label]!
+            let pair = geometries[piece.prefab]!
             node.geometry = visible && !focused ? pair.dim : pair.normal
             node.isHidden = !visible && !ghosts
             node.opacity = visible ? 1 : 0.12
@@ -168,7 +170,7 @@ final class BuildScene {
     }
 
     private func geometries(for piece: Piece, _ catalog: PieceCatalog?) -> (normal: SCNGeometry, dim: SCNGeometry) {
-        if let pair = geometries[piece.label] { return pair }
+        if let pair = geometries[piece.prefab] { return pair }
         let normal = catalog?.geometry(for: piece.name) ?? placeholderGeometry()
         let dim = normal.copy() as! SCNGeometry
         dim.materials = normal.materials.map {
@@ -176,7 +178,7 @@ final class BuildScene {
             m.multiply.contents = NSColor(white: 0.3, alpha: 1)
             return m
         }
-        geometries[piece.label] = (normal, dim)
+        geometries[piece.prefab] = (normal, dim)
         return (normal, dim)
     }
 

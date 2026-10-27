@@ -17,8 +17,10 @@ struct WelcomeView: View {
                     .foregroundStyle(.secondary)
             }
 
+            if model.catalog == nil { setupCallout }
+
             if model.worlds.isEmpty {
-                Text("No worlds found yet. Single-player saves show up here on their own, and server worlds once they are downloaded with tools/fetch_world.sh.")
+                Text("No worlds found yet. Single-player saves show up here on their own. To open a map a friend sent you, drop the .zip onto this window.")
                     .font(.callout).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 420)
@@ -38,12 +40,30 @@ struct WelcomeView: View {
                 Button("Open Other…") { model.chooseFile() }
                 Button("Example Tower") { model.openExample() }
             }
-            Text("Or drop a world folder, a .db save or a build .json onto the window.")
+            Text("Or drop a shared map (.zip), a world folder, a .db save or a build .json onto the window.")
                 .font(.caption).foregroundStyle(.tertiary)
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { model.refreshWorlds() }
+    }
+
+    /// Until the game's meshes are extracted, everything draws as boxes: say so first.
+    private var setupCallout: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "shippingbox").font(.title2).foregroundStyle(Theme.ember)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Set up the game assets first").font(.headline)
+                Text("Munin draws builds with Valheim's own meshes, read from the game on this Mac.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Set Up…") { model.showSetup = true }.buttonStyle(.borderedProminent)
+        }
+        .padding(14)
+        .frame(maxWidth: 520)
+        .background(Theme.ember.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.ember.opacity(0.3)))
     }
 }
 

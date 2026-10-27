@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import MuninCore
+import UniformTypeIdentifiers
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -35,8 +36,10 @@ final class AppModel: ObservableObject {
     @Published var loading = false
     @Published var hovered: (piece: Piece, isProp: Bool, at: CGPoint)?
 
-    let catalog: PieceCatalog?
-    let catalogError: String?
+    @Published private(set) var catalog: PieceCatalog?
+    @Published private(set) var catalogError: String?
+    let setup = AssetSetup()
+    @Published var showSetup = false
     /// Every object of the loaded world; empty for a build file.
     private var objects: [Piece] = []
     /// The game's terrain for this world, when `munin_export` has been run.
@@ -46,14 +49,32 @@ final class AppModel: ObservableObject {
     private var groundPrefabs: Set<Int32> = []
 
     init() {
+        loadCatalog()
+        refreshWorlds()
+    }
+
+    // MARK: - game assets
+
+    private func loadCatalog() {
         do {
             catalog = try PieceCatalog()
             catalogError = nil
         } catch {
             catalog = nil
-            catalogError = "No mesh catalog — pieces draw as boxes. Run tools/extract_meshes.py once to pull real shapes from your Valheim install."
+            catalogError = "Game assets aren't set up yet, so pieces draw as plain boxes."
         }
-        refreshWorlds()
+    }
+
+    /// Worlds whose trees, rocks and creatures the setup should extract.
+    var worldsForSetup: [URL] { worlds.filter { !$0.isBuildFile }.map(\.url) }
+
+    func runSetup() {
+        setup.start(worlds: worldsForSetup) { [weak self] in
+            guard let self else { return }
+            self.loadCatalog()
+            // Names and shapes come from the catalog: read what is open again.
+            if let current = self.current { self.open(current.url) }
+        }
     }
 
     // MARK: - worlds
@@ -78,6 +99,7 @@ final class AppModel: ObservableObject {
     }
 
     func open(_ url: URL) {
+        if url.pathExtension.lowercased() == "zip" { importMap(url); return }
         let entry = WorldLibrary.entry(at: url, source: .other)
         let url = entry?.url ?? url
         loading = true
@@ -224,7 +246,55 @@ final class AppModel: ObservableObject {
     }
 
     func openExample() {
-        if let url = Bundle.module.url(forResource: "watchtower", withExtension: "json") { open(url) }
+        if let url = Resource.url("watchtower", "json") { open(url) }
+    }
+
+    // MARK: - sharing a map
+
+    /// A map zip from a friend: the world goes into Munin's worlds, its terrain next
+    /// to the others, and then it opens.
+    func importMap(_ zip: URL) {
+        loading = true
+        statusIsError = false
+        opening = zip.deletingPathExtension().lastPathComponent
+        status = "Unpacking \(zip.lastPathComponent)…"
+        Task.detached(priority: .userInitiated) {
+            do {
+                let world = try MapPackage.install(zip, worlds: TerrainStore.root.appendingPathComponent("worlds"),
+                                                   terrains: TerrainStore.folder)
+                await MainActor.run { self.open(world) }
+            } catch {
+                await self.failed(error.localizedDescription)
+            }
+        }
+    }
+
+    var canExportMap: Bool { current.map { !$0.isBuildFile } ?? false }
+
+    /// File › Export Map…: the open world and its terrain in one zip, to send to a friend.
+    func exportMap() {
+        guard let world = current, !world.isBuildFile else { return }
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = world.name + ".zip"
+        panel.allowedContentTypes = [.zip]
+        panel.message = "The world and its terrain, in one file. Whoever gets it drops it on Munin's window."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let terrain = TerrainStore.file(for: world.url)
+        loading = true
+        status = "Packing \(world.name)…"
+        statusIsError = false
+        Task.detached(priority: .userInitiated) {
+            do {
+                try MapPackage.create(world: world.url, terrain: terrain, to: url)
+                await MainActor.run {
+                    self.loading = false
+                    self.status = ""
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+            } catch {
+                await self.failed(error.localizedDescription)
+            }
+        }
     }
 
     /// Take a world off the recent list; it still shows if it sits in a save folder.
@@ -236,7 +306,7 @@ final class AppModel: ObservableObject {
     func chooseFile() {
         let panel = NSOpenPanel()
         panel.directoryURL = current?.url.deletingLastPathComponent()
-        panel.message = "Choose a world save — a .db file, or the folder of a chunked world — or a build file (.json)"
+        panel.message = "Choose a world save (a .db file, or the folder of a chunked world), a shared map (.zip) or a build file (.json)"
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url { open(url) }

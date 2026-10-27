@@ -267,3 +267,28 @@ private func gzip(_ data: Data) throws -> Data {
     // A file inside a chunked world stands for the whole folder.
     #expect(WorldLibrary.entry(at: server.appendingPathComponent("Alpha/0_0__1_3.chunk"), source: .other)?.name == "Alpha")
 }
+
+@Test func mapPackageRoundTrips() throws {
+    let fm = FileManager.default
+    let root = fm.temporaryDirectory.appendingPathComponent("munin-test-\(UUID().uuidString)")
+    defer { try? fm.removeItem(at: root) }
+    let world = root.appendingPathComponent("mine/Midgard")
+    try fm.createDirectory(at: world, withIntermediateDirectories: true)
+    try Data("chunk".utf8).write(to: world.appendingPathComponent("00_00__0_1.chunk"))
+    try Data("index".utf8).write(to: world.appendingPathComponent("_main.1.chunks"))
+    let terrain = root.appendingPathComponent("mine/ServerName.terrain")
+    try Data("MUNT".utf8).write(to: terrain)
+
+    let zip = root.appendingPathComponent("Midgard.zip")
+    try MapPackage.create(world: world, terrain: terrain, to: zip)
+    let installed = try MapPackage.install(zip, worlds: root.appendingPathComponent("theirs/worlds"),
+                                           terrains: root.appendingPathComponent("theirs/terrain"))
+
+    #expect(installed.path == root.appendingPathComponent("theirs/worlds/Midgard").path)
+    #expect(fm.fileExists(atPath: installed.appendingPathComponent("00_00__0_1.chunk").path))
+    // Renamed after the world, so the app finds it.
+    #expect(try Data(contentsOf: root.appendingPathComponent("theirs/terrain/Midgard.terrain")) == Data("MUNT".utf8))
+    // Installing again replaces the older copy.
+    _ = try MapPackage.install(zip, worlds: root.appendingPathComponent("theirs/worlds"),
+                               terrains: root.appendingPathComponent("theirs/terrain"))
+}
