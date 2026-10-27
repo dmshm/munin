@@ -9,9 +9,21 @@
 </p>
 
 <p align="center">
-  <img src="docs/tower-day.jpg" width="49%" alt="The bundled example watchtower rendered by day, with the game's own wood, thatch and torch">
-  <img src="docs/tower-dusk.jpg" width="49%" alt="The same watchtower at dusk, lit by its torch against the evening sky">
+  <img src="docs/hero.jpg" width="100%" alt="A watchtower in a forest clearing at golden hour: palisade, campfire, cart and torches, with the game's own trees and grass">
 </p>
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/night.jpg" alt="The same clearing at night, lit by the campfire and torches"></td>
+    <td width="33%"><img src="docs/layers.jpg" alt="The tower cut at its first storey, the layers above shown as ghosts"></td>
+    <td width="33%"><img src="docs/plan.jpg" alt="The clearing from straight above: tower, palisade arc, campfire and a pond"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Fires burn by the game's own light</sub></td>
+    <td align="center"><sub>Cut a build to see how it went up</sub></td>
+    <td align="center"><sub>Plan view</sub></td>
+  </tr>
+</table>
 
 You built a tower months ago and no longer remember how. Munin reads your world
 save and rebuilds any part of the world in 3D with the game's own meshes and
@@ -136,6 +148,8 @@ app/Munin.app/Contents/MacOS/Munin --snapshot <world|build.json> <out-dir> [buil
 ```
 
 This writes one PNG per view preset, plus two close-ups, without opening a window.
+`--showcase <out-dir>` renders the pictures at the top of this README: the example
+watchtower in a made-up meadow, so no one's world is needed.
 `MUNIN_HOUR=22` renders at night, and `MUNIN_TIMING=1` prints how long each loading
 step and a few frames take. In the app, `MUNIN_STATS=1` shows SceneKit's frame
 statistics and prints the frame rate and rendered size once a second.

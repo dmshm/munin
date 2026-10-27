@@ -165,6 +165,13 @@ public final class Terrain: @unchecked Sendable {
         public var mask: SIMD4<UInt8>
         public var paint: SIMD3<Float>
         public var forest: Float
+
+        public init(biome: Biome, mask: SIMD4<UInt8>, paint: SIMD3<Float>, forest: Float) {
+            self.biome = biome
+            self.mask = mask
+            self.paint = paint
+            self.forest = forest
+        }
     }
 
     /// What covers the ground at the vertex nearest world (x, z).

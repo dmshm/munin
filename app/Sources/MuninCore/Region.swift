@@ -31,6 +31,15 @@ public struct RegionContent {
     public static let seaLevel: Float = 30
     /// Anything above this is inside a dungeon, not on the surface.
     public static let dungeonAltitude: Float = 1000
+
+    /// An area put together by hand rather than cut from a world, such as a showcase scene.
+    public init(region: Region, build: Build, props: [Piece], ground: Heightfield?, waterLevel: Float) {
+        self.region = region
+        self.build = build
+        self.props = props
+        self.ground = ground
+        self.waterLevel = waterLevel
+    }
 }
 
 /// Heights on a square grid, relative to the region's origin.
@@ -45,6 +54,16 @@ public struct Heightfield {
     public var surface: [Terrain.Surface]?
 
     public var isExact: Bool { surface != nil }
+
+    public init(minX: Float, minZ: Float, cell: Float, columns: Int, rows: Int, heights: [Float], surface: [Terrain.Surface]?) {
+        self.minX = minX
+        self.minZ = minZ
+        self.cell = cell
+        self.columns = columns
+        self.rows = rows
+        self.heights = heights
+        self.surface = surface
+    }
 
     public func height(column: Int, row: Int) -> Float { heights[row * columns + column] }
 

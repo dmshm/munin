@@ -8,6 +8,7 @@ struct MuninApp: App {
 
     init() {
         Snapshot.runIfRequested()
+        Showcase.runIfRequested()
     }
 
     var body: some Scene {

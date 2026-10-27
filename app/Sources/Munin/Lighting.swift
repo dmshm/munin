@@ -121,7 +121,9 @@ extension BuildScene {
     /// Point lights are costly, so only the `limit` nearest the centre get one;
     /// every fire still gets its flames.
     func addFires(_ objects: [(node: SCNNode, object: Piece)], catalog: PieceCatalog, limit: Int = 48) {
-        var candidates: [(SCNNode, PieceCatalog.LightDef, Bool, Float)] = []
+        /// Light, whether it has flames, distance for picking which get a light, and the
+        /// height its flames start at when not at the light (ground fires).
+        var candidates: [(SCNNode, PieceCatalog.LightDef, Bool, Float, Float?)] = []
         for (node, object) in objects {
             guard let name = object.name, let entry = catalog.manifest.pieces[name], let lights = entry.lights else { continue }
             if let fire = entry.fire {
@@ -129,20 +131,34 @@ extension BuildScene {
                 guard fire.infiniteFuel || (object.fuel ?? fire.startFuel) > 0 else { continue }
             }
             let flames = entry.fire != nil || name.lowercased().contains("candle")
+            // A fire pit's light hangs above it; its flames belong among the stones.
+            let low = entry.bounds.count == 2 && entry.bounds[1][1] - entry.bounds[0][1] < 0.6
+            let flameHeight: Float? = flames && low ? entry.bounds[0][1] + 0.1 : nil
             for l in lights {
                 // Smelters and kilns glow only with fuel loaded; a forge's light means someone
                 // is crafting at it, which a save cannot say, so it stays dark.
                 if entry.fire == nil, l.switched == true, (object.fuel ?? 0) <= 0 { continue }
-                candidates.append((node, l, flames, simd_length(object.position)))
+                candidates.append((node, l, flames, simd_length(object.position), flameHeight))
             }
         }
         let lit = Set(candidates.indices.sorted { candidates[$0].3 < candidates[$1].3 }.prefix(limit))
-        for (i, (node, def, flames, _)) in candidates.enumerated() {
+        for (i, (node, def, flames, _, flameHeight)) in candidates.enumerated() {
+            let at = SIMD3(def.position[0], def.position[1], def.position[2])
             let holder = SCNNode()
-            holder.simdPosition = sceneKitPosition(SIMD3(def.position[0], def.position[1], def.position[2]))
+            holder.simdPosition = sceneKitPosition(at)
             node.addChildNode(holder)
             if lit.contains(i) { holder.light = pointLight(def, on: holder) }
-            if flames { holder.addParticleSystem(flame(size: min(max(def.range / 12, 0.4), 2.2))) }
+            guard flames else { continue }
+            let size = min(max(def.range / 12, 0.4), 2.2)
+            if let flameHeight {
+                let base = SCNNode()
+                base.simdPosition = sceneKitPosition(SIMD3(at.x, flameHeight, at.z))
+                node.addChildNode(base)
+                // A campfire burns bigger than the flame on a torch.
+                base.addParticleSystem(flame(size: size * 2))
+            } else {
+                holder.addParticleSystem(flame(size: size))
+            }
         }
     }
 
