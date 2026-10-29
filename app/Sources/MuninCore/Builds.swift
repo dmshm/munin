@@ -146,6 +146,17 @@ public enum BuildFile {
             case .hash(let h): try c.encode(h)
             }
         }
+        /// The hash a save uses, and the name when the file gave one.
+        var resolved: (hash: Int32, name: String?) {
+            switch self {
+            case .name(let n): return (stableHash(n), n)
+            case .hash(let h): return (h, nil)
+            }
+        }
+    }
+
+    static func corrupt(_ why: String) -> Error {
+        CocoaError(.fileReadCorruptFile, userInfo: [NSLocalizedDescriptionKey: why])
     }
 
     public static func export(_ build: Build) throws -> Data {
@@ -165,20 +176,13 @@ public enum BuildFile {
 
     public static func load(_ data: Data) throws -> Build {
         let file = try JSONDecoder().decode(File.self, from: data)
-        guard file.format == format else {
-            throw CocoaError(.fileReadCorruptFile, userInfo: [NSLocalizedDescriptionKey: "Not a \(format) file (format: \(file.format))"])
-        }
+        guard file.format == format else { throw corrupt("Not a \(format) file (format: \(file.format))") }
         let origin = vec(file.origin ?? [0, 0, 0])
-        var names: [String] = []
-        let pieces = file.pieces.map { e -> Piece in
-            let hash: Int32
-            switch e.prefab {
-            case .name(let n): hash = stableHash(n); names.append(n)
-            case .hash(let h): hash = h
-            }
-            return Piece(prefab: hash, position: vec(e.pos) + origin, rotation: vec(e.rot ?? [0, 0, 0]))
+        let resolved = file.pieces.map(\.prefab.resolved)
+        let pieces = zip(file.pieces, resolved).map { e, prefab in
+            Piece(prefab: prefab.hash, position: vec(e.pos) + origin, rotation: vec(e.rot ?? [0, 0, 0]))
         }
-        PrefabNames.shared.add(names)
+        PrefabNames.shared.add(resolved.compactMap(\.name))
         return Build(name: file.name, worldPieces: pieces)
     }
 

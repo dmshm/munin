@@ -48,6 +48,9 @@ fires around it. Step through a build layer by layer to see which piece went whe
   sway, water ripples, flames rise.
 - **Hover for details.** Name, offset from the centre and facing of any piece.
 - **Save a build** to a small JSON file that opens without the world.
+- **Try a plan on the real world.** A plan file lists pieces to add and remove; Munin
+  shows the world as the plan would leave it, next to the save. The save is never
+  touched.
 
 ## Install
 
@@ -157,6 +160,36 @@ A large 3D view renders at most about 7 million pixels and is scaled up to fit:
 frame cost follows the pixel count, and a full-screen view on a 5K display has
 12 million. **View › Full Resolution** renders every pixel instead.
 
+## Plans
+
+A plan is a change you are thinking about, written down before you build it: what
+to take away and what to put up. Open or drop one while a world is open and Munin
+lays it over that world, in memory only. The sidebar shows the plan's name, how many
+pieces it adds and removes, and a switch to see the world with it or as saved. The
+plan is remembered for that world and goes back on when the world opens again;
+**Clear** takes it off, **Reload** reads the file again after you edit it. If the
+file cannot be read when the world opens, the plan stays remembered, with **Retry**
+once it is fixed and **Forget**. A plan opened with no world open goes over the last
+world opened; so does `Munin --open plan.json` at launch.
+
+```json
+{
+  "format": "munin-plan/1",
+  "name": "Castle walls",
+  "remove": [ {"prefab": "stone_wall_4x2", "pos": [10.5, 32.7, 20.1]} ],
+  "add":    [ {"prefab": "stone_wall_2x1", "pos": [14, 31, 18], "rot": [0, 90, 0]} ]
+}
+```
+
+- Positions are the game's world coordinates in metres: x east, y up, z north, as
+  the save stores them. `rot` is the game's Euler angles in degrees, and may be left
+  out.
+- `prefab` is a name or, for a piece the catalog has no name for, its hash.
+- Each removal takes a built piece of that prefab within 10 cm of `pos`, the closest
+  one unless another removal can only reach that one; a removal's `rot` is not read.
+  Trees, rocks and other things the world grew are never removed. A removal that
+  finds nothing is counted and shown, not an error.
+
 ## Repository
 
 | Path | What |
@@ -175,6 +208,12 @@ app/Munin.app/Contents/MacOS/Munin --snapshot <world|build.json> <out-dir> [buil
 ```
 
 This writes one PNG per view preset, plus two close-ups, without opening a window.
+`--plan <plan.json>`, anywhere on the line, lays a plan over the world first:
+
+```bash
+app/Munin.app/Contents/MacOS/Munin --snapshot <world> <out-dir> 165,-15 80 --plan plan.json
+```
+
 `--showcase <out-dir>` renders the pictures at the top of this README: the example
 watchtower in a made-up meadow, so no one's world is needed.
 `MUNIN_HOUR=22` renders at night, and `MUNIN_TIMING=1` prints how long each loading

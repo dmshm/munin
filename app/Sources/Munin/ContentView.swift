@@ -15,6 +15,7 @@ struct ContentView: View {
         }
         .task {
             // `Munin --open <path>`: start with that; otherwise with what was open last time.
+            // A plan needs a world under it, so it goes over the last world opened.
             let args = CommandLine.arguments
             if let i = args.firstIndex(of: "--open"), args.count > i + 1 {
                 model.open(URL(fileURLWithPath: args[i + 1]))
@@ -140,7 +141,7 @@ struct ContentView: View {
         RoundedRectangle(cornerRadius: 12)
             .strokeBorder(Theme.ember, style: StrokeStyle(lineWidth: 2, dash: [8]))
             .background(Theme.ember.opacity(0.08))
-            .overlay(Text("Drop a shared map (.zip), a world or a build .json").font(.title3))
+            .overlay(Text("Drop a shared map (.zip), a world, a build .json or a plan for the open world").font(.title3))
             .padding(12)
     }
 }

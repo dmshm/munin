@@ -32,7 +32,7 @@ struct BuildView: NSViewRepresentable {
         view.scene = scene.scene
         view.pointOfView = scene.camera
         view.buildScene = scene
-        scene.frame(.iso)
+        // A new scene frames itself (BuildScene.init); one shown again keeps its camera.
         view.onHover = onHover
     }
 }

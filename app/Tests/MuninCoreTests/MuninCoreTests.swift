@@ -292,3 +292,77 @@ private func gzip(_ data: Data) throws -> Data {
     _ = try MapPackage.install(zip, worlds: root.appendingPathComponent("theirs/worlds"),
                                terrains: root.appendingPathComponent("theirs/terrain"))
 }
+
+/// A plan decodes names and hashes alike, and refuses what it cannot place.
+@Test func decodesPlanFiles() throws {
+    let json = """
+    {"format": "munin-plan/1", "name": "Castle walls",
+     "remove": [{"prefab": "stone_wall_4x2", "pos": [1, 2, 3]}],
+     "add": [{"prefab": "stone_wall_2x1", "pos": [4, 5, 6], "rot": [0, 90, 0]},
+             {"prefab": \(stableHash("woodwall")), "pos": [7, 8, 9]}]}
+    """
+    let plan = try PlanFile.load(Data(json.utf8))
+    #expect(plan.name == "Castle walls")
+    #expect(plan.remove == [Plan.Removal(prefab: stableHash("stone_wall_4x2"), position: SIMD3(1, 2, 3))])
+    #expect(plan.add.map(\.prefab) == [stableHash("stone_wall_2x1"), stableHash("woodwall")])
+    #expect(plan.add[0].rotation == SIMD3(0, 90, 0) && plan.add[1].rotation == .zero)
+    #expect(plan.add.allSatisfy { $0.creator != nil })
+    #expect(plan.add[0].name == "stone_wall_2x1")
+    #expect(PlanFile.declaredFormat(Data(json.utf8)) == "munin-plan/1")
+    #expect(PlanFile.declaredFormat(Data(#"{"format": "munin-build/1", "pieces": []}"#.utf8)) == "munin-build/1")
+
+    #expect(throws: (any Error).self) { try PlanFile.load(Data(#"{"format": "munin-build/1", "name": "x"}"#.utf8)) }
+    #expect(throws: (any Error).self) {
+        try PlanFile.load(Data(#"{"format": "munin-plan/1", "name": "x", "add": [{"prefab": "a", "pos": [1, 2]}]}"#.utf8))
+    }
+    // A removal goes by prefab and place; a rotation it carries is not checked.
+    let quaternion = #"{"format": "munin-plan/1", "remove": [{"prefab": "a", "pos": [1, 2, 3], "rot": [0, 0, 0, 1]}]}"#
+    #expect(try PlanFile.load(Data(quaternion.utf8)).remove.count == 1)
+    #expect(throws: (any Error).self) {
+        try PlanFile.load(Data(#"{"format": "munin-plan/1", "add": [{"prefab": "a", "pos": [1, 2, 3], "rot": [0, 0, 0, 1]}]}"#.utf8))
+    }
+}
+
+/// Removals take the closest built piece of their prefab within 10 cm, once each;
+/// the rest are counted as unmatched.
+@Test func appliesPlansToTheWorld() {
+    let wall = stableHash("stone_wall_4x2"), tree = stableHash("Beech1")
+    let objects = [
+        Piece(prefab: wall, position: SIMD3(10, 0, 10), rotation: .zero, creator: 1),
+        Piece(prefab: wall, position: SIMD3(10.05, 0, 10), rotation: .zero, creator: 1),
+        Piece(prefab: wall, position: SIMD3(20, 0, 20), rotation: .zero, creator: 1),
+        Piece(prefab: wall, position: SIMD3(30, 0, 30), rotation: .zero),          // not built
+        Piece(prefab: tree, position: SIMD3(40, 0, 40), rotation: .zero, creator: 1),
+    ]
+    let plan = Plan(name: "test", remove: [
+        Plan.Removal(prefab: wall, position: SIMD3(10.06, 0, 10)),   // the closer of the two
+        Plan.Removal(prefab: wall, position: SIMD3(10.06, 0, 10)),   // then the other, 6 cm away
+        Plan.Removal(prefab: wall, position: SIMD3(20, 0.11, 20)),   // just out of reach
+        Plan.Removal(prefab: wall, position: SIMD3(30, 0, 30)),      // not a built piece
+        Plan.Removal(prefab: wall, position: SIMD3(40, 0, 40)),      // another prefab stands there
+    ], add: [Piece(prefab: wall, position: SIMD3(50, 0, 50), rotation: .zero, creator: Plan.creator)])
+
+    let applied = plan.apply(to: objects)
+    #expect(applied.removed == 2 && applied.unmatched == 3 && applied.added == 1)
+    #expect(applied.objects.map(\.position) == [SIMD3(20, 0, 20), SIMD3(30, 0, 30), SIMD3(40, 0, 40), SIMD3(50, 0, 50)])
+    #expect(clusterPieces(applied.objects.filter { $0.creator != nil }).map(\.pieces.count).reduce(0, +) == 3)
+
+    let one = Plan(name: "one", remove: [Plan.Removal(prefab: wall, position: SIMD3(10.04, 0, 10))], add: [])
+    #expect(one.apply(to: objects).objects.map(\.position.x) == [10, 20, 30, 40])
+}
+
+/// Removals are paired with pieces so as many as possible match: the first does not
+/// take the only piece the second can reach while it has another.
+@Test func pairsRemovalsSoAllThatCanMatchDo() {
+    let wall = stableHash("stone_wall_4x2")
+    let objects = [
+        Piece(prefab: wall, position: SIMD3(0, 0, 0), rotation: .zero, creator: 1),
+        Piece(prefab: wall, position: SIMD3(0.08, 0, 0), rotation: .zero, creator: 1),
+    ]
+    let plan = Plan(name: "pair", remove: [
+        Plan.Removal(prefab: wall, position: SIMD3(0.05, 0, 0)),   // nearer the second piece
+        Plan.Removal(prefab: wall, position: SIMD3(0.13, 0, 0)),   // can only reach the second
+    ], add: [])
+    let applied = plan.apply(to: objects)
+    #expect(applied.removed == 2 && applied.unmatched == 0 && applied.objects.isEmpty)
+}

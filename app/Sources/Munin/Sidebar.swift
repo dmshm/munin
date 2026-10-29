@@ -87,6 +87,7 @@ struct WorldCard: View {
                 }
                 if let terrain = info.terrain { terrainLine(terrain) }
                 ForEach(info.warnings, id: \.self) { note($0, symbol: "exclamationmark.triangle", color: .orange) }
+                if let plan = model.plan { planLine(plan) } else if let issue = model.planIssue { planIssueLine(issue) }
             }
 
             if !model.status.isEmpty, !model.loading {
@@ -165,6 +166,51 @@ struct WorldCard: View {
         .help(terrain.isExact
               ? "The game's own terrain, from munin_export, with your levelling, digging and paths from the save."
               : "The save holds no terrain. Run munin_export in game for the real ground; until then it is estimated from where trees and rocks stand.")
+    }
+
+    /// The plan laid over this world: a switch to compare it with the save, and what it changes.
+    private func planLine(_ plan: PlanInfo) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle(isOn: Binding(get: { model.showPlan }, set: { model.setPlanShown($0) })) {
+                Label(plan.name, systemImage: "pencil.and.ruler")
+                    .lineLimit(1).truncationMode(.middle)
+            }
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .help("Show the world with this plan, or as saved. The save itself is never changed.")
+            HStack(spacing: 8) {
+                Text(plan.summary).foregroundStyle(.secondary).monospacedDigit()
+                Spacer()
+                Button("Reload") { model.reloadPlan() }
+                    .help("Read \(plan.url.lastPathComponent) again")
+                Button("Clear") { model.clearPlan() }
+                    .help("Take the plan off this world")
+            }
+            .buttonStyle(.plain)
+            if plan.unmatched > 0 {
+                note("\(plan.unmatched) to remove matched no built piece", symbol: "exclamationmark.triangle", color: .orange)
+                    .help("No built piece of that kind stands within \(String(format: "%.0f", Plan.tolerance * 100)) cm of the position given")
+            }
+        }
+        .font(.caption)
+    }
+
+    /// The plan remembered for this world could not be read this time: try again once
+    /// the file is fixed, or forget it.
+    private func planIssueLine(_ issue: PlanIssue) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            note("The plan \(issue.url.lastPathComponent) could not be read: \(issue.message)",
+                 symbol: "exclamationmark.triangle", color: .orange)
+            HStack(spacing: 8) {
+                Spacer()
+                Button("Retry") { model.reloadPlan() }
+                    .help("Read \(issue.url.lastPathComponent) again")
+                Button("Forget") { model.clearPlan() }
+                    .help("Stop laying this plan over the world")
+            }
+            .buttonStyle(.plain)
+        }
+        .font(.caption)
     }
 
     private func note(_ text: String, symbol: String, color: Color) -> some View {
