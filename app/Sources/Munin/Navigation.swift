@@ -123,6 +123,9 @@ final class HoverSCNView: SCNView {
     var pixelBudget: CGFloat? = defaultPixelBudget { didSet { applyRenderScale() } }
     /// Fraction of the display's resolution the scene renders at.
     private(set) var renderScale: CGFloat = 1
+    /// Set while the bounds change: AppKit answers that by calling
+    /// viewDidChangeBackingProperties, which would come back here without end.
+    private var applyingRenderScale = false
 
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
@@ -138,11 +141,18 @@ final class HoverSCNView: SCNView {
     /// render fewer pixels, stretched to fill the view. Points from events arrive in
     /// bounds coordinates, so picking keeps working unchanged.
     private func applyRenderScale() {
+        guard !applyingRenderScale else { return }
         let backing = window?.backingScaleFactor ?? 2
         let pixels = frame.width * frame.height * backing * backing
-        renderScale = pixelBudget.map { pixels > $0 ? ($0 / pixels).squareRoot() : 1 } ?? 1
-        let size = NSSize(width: frame.width * renderScale, height: frame.height * renderScale)
-        if bounds.size != size { setBoundsSize(size) }
+        let scale = pixelBudget.map { pixels > $0 ? ($0 / pixels).squareRoot() : 1 } ?? 1
+        let size = NSSize(width: frame.width * scale, height: frame.height * scale)
+        if abs(bounds.width - size.width) > 0.5 || abs(bounds.height - size.height) > 0.5 {
+            applyingRenderScale = true
+            setBoundsSize(size)
+            applyingRenderScale = false
+        }
+        // From the bounds AppKit kept, which hover positions are measured in.
+        renderScale = frame.width > 0 ? bounds.width / frame.width : 1
     }
 
     override func updateTrackingAreas() {
